@@ -1,0 +1,26 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Shared Renovate preset for the Gravixar fleet (gravixar-sv). One place to tune dependency automation for every repo. Public repo so BOTH public and private consumers can resolve it. Consume with: { \"extends\": [\"github>gravixar-sv/renovate-config\"] }.",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    "schedule:weekly",
+    "group:allNonMajor"
+  ],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "rebaseWhen": "conflicted",
+  "recreateWhen": "never",
+  "labels": ["dependencies"],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on monday"]
+  },
+  "packageRules": [
+    {
+      "description": "@gravixar-sv/core is published to a private registry that Renovate's public lookup cannot resolve; its versioning is managed outside Renovate. Disable to remove the fleet-wide no-result warning.",
+      "matchPackageNames": ["@gravixar-sv/core"],
+      "enabled": false
+    }
+  ]
+}
