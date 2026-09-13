@@ -21,6 +21,21 @@
       "description": "@gravixar-sv/core is published to a private registry that Renovate's public lookup cannot resolve; its versioning is managed outside Renovate. Disable to remove the fleet-wide no-result warning.",
       "matchPackageNames": ["@gravixar-sv/core"],
       "enabled": false
+    },
+    {
+      "description": "Override blocks (npm `overrides`, package.json `pnpm.overrides`, pnpm-workspace.yaml `overrides`, yarn `resolutions`) are a SECURITY-REMEDIATION surface, not a dependency surface. Every entry is a version-scoped floor chosen to clear one advisory without breaking the transitive consumer it rewrites, so version currency is the wrong driver. Renovate only ever proposes raising the VALUE while the KEY stays (gravixar-hq #787: '@hono/node-server@<1.19.15' -> '^2.0.0'; robonamix #149: 'undici@<6.27.0' -> '^8.0.0'): a no-op today, and the day something matches the key it forces a MAJOR onto a consumer that declared a caret range. On npm repos the in-range lockfile bump of an override also fails Renovate's artifact step outright (blood-donate-app #36: 'EOVERRIDE Override for fast-uri@3.1.7 conflicts with direct dep'). Entries change only when an advisory drives them (Cortex security rollups / audit gates). Promoted fleet-wide 2026-09-13 from the per-repo rules in gravixar-hq and bs-hub (decision bs-hub-renovate-excludes-overrides).",
+      "matchDepTypes": ["overrides", "pnpm.overrides", "pnpm-workspace.overrides", "resolutions"],
+      "enabled": false
+    },
+    {
+      "description": "typescript stays on the 6.x line fleet-wide (decision deferred-typescript-7-blocked-upstream, until 2026-11-30). 7.x is the native Go compiler. Next.js >= 16.3.3 now type-checks on it (gravixar-hq #852's own Vercel build ran 'Running TypeScript ... Finished TypeScript in 3.2s' with typescript@7.0.2 resolved), so the binding blocker moved to typescript-eslint: 8.68-8.70 declare peer 'typescript >=4.8.4 <6.1.0' and throw 'typescript-eslint does not support TS 7.0' at load, which kills every repo's `eslint` run (reproduced in gravixar-hq on 2026-09-13; bs-hub #531 hit the same wall). `next build` does not run eslint, so a green Vercel check does not cover this. Minor/patch inside 6.x keeps flowing. Lift by deleting this rule once `npm view typescript-eslint peerDependencies.typescript` admits 7.x (tracking typescript-eslint/typescript-eslint#10940) and one repo's lint + typecheck + build all pass on 7.x.",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<7.0.0"
+    },
+    {
+      "description": "eslint stays on the 9.x line fleet-wide (decision deferred-eslint-10-blocked-upstream). eslint-config-next (16.3.5 at the time of writing) bundles eslint-plugin-react 7.37.5, whose peer range stops at ^9.7 and which crashes at rule execution under eslint 10 (context.getFilename was removed; gravixar-hq #851 CI 2026-09-10, bs-hub #516, robonamix #39). `next build` does not run eslint, so a green Vercel check does not cover this. Lift by deleting this rule once eslint-plugin-react declares a ^10 peer AND eslint-config-next bundles that release.",
+      "matchPackageNames": ["eslint", "@eslint/js"],
+      "allowedVersions": "<10.0.0"
     }
   ]
 }

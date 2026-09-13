@@ -28,5 +28,7 @@ That's the whole per-repo config. Everything else is tuned here in [`default.jso
 - **Lockfile maintenance** — weekly refresh to keep lockfiles healthy.
 - **No auto-merge** — every PR waits for a human. (Intentional: several repos deploy `main` straight to production.)
 - **`@gravixar-sv/core` disabled** — it lives on a private registry Renovate can't read; its versioning is managed outside Renovate.
+- **Override blocks are off-limits** — `overrides` / `pnpm.overrides` / pnpm-workspace `overrides` / `resolutions` are security floors, driven by advisories (Cortex rollups, audit gates), never by version currency. Renovate can only raise the value under a fixed range key, which is a no-op at best and a forced major at worst, and on npm repos the in-range lockfile bump fails with `EOVERRIDE`.
+- **Held majors (fleet-wide, by decision)** — `typescript` `<7.0.0` (typescript-eslint refuses the native 7.x compiler at load) and `eslint` / `@eslint/js` `<10.0.0` (eslint-config-next bundles an eslint-plugin-react that crashes under eslint 10). Each rule's `description` in `default.json` names the evidence and the lift condition; lift by deleting the rule. The brain's `stack-drift` report lists both under "Deferred by decision" so they are suppressed from the actionable count, never hidden.
 
 To change behavior for the **whole fleet**, edit `default.json` here — every repo picks it up on its next run.
