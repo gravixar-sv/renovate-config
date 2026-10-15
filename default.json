@@ -12,9 +12,21 @@
   "rebaseWhen": "conflicted",
   "recreateWhen": "never",
   "labels": ["dependencies"],
+  "vulnerabilityAlerts": {
+    "description": "Security PRs merge themselves once EVERY status check on the PR is green. platformAutomerge=false makes Renovate check the branch status itself instead of handing the PR to GitHub auto-merge, so a repo with no required checks still waits for its Vercel and CI checks. Before this (HQ S250, 2026-10-15) a green security PR waited days for a person: 5 sat in /fleet triage at once. A repo whose every merge needs a person opts out in its own renovate.json with vulnerabilityAlerts.automerge=false (bs-hub does). Majors and the weekly all-non-major group are not affected; they stay human.",
+    "automerge": true,
+    "platformAutomerge": false,
+    "automergeType": "pr",
+    "automergeStrategy": "squash"
+  },
   "lockFileMaintenance": {
     "enabled": true,
-    "schedule": ["before 6am on monday"]
+    "schedule": ["before 6am on monday"],
+    "description": "The weekly lockfile refresh re-resolves every transitive dependency inside its declared range, which clears most transitive advisories (brace-expansion, source-map-js, fast-uri) without an override pin. It merges itself once every check is green, with the same rules and the same per-repo opt-out as vulnerabilityAlerts (HQ S250).",
+    "automerge": true,
+    "platformAutomerge": false,
+    "automergeType": "pr",
+    "automergeStrategy": "squash"
   },
   "packageRules": [
     {
