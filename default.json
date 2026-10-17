@@ -11,9 +11,10 @@
   "prHourlyLimit": 2,
   "rebaseWhen": "conflicted",
   "recreateWhen": "never",
+  "platformAutomerge": false,
   "labels": ["dependencies"],
   "vulnerabilityAlerts": {
-    "description": "Security PRs merge themselves once EVERY status check on the PR is green. platformAutomerge=false makes Renovate check the branch status itself instead of handing the PR to GitHub auto-merge, so a repo with no required checks still waits for its Vercel and CI checks. Before this (HQ S250, 2026-10-15) a green security PR waited days for a person: 5 sat in /fleet triage at once. A repo whose every merge needs a person opts out in its own renovate.json with vulnerabilityAlerts.automerge=false (bs-hub does). Majors and the weekly all-non-major group are not affected; they stay human.",
+    "description": "Security PRs merge themselves once EVERY status check on the PR is green. platformAutomerge=false makes Renovate check the branch status itself instead of handing the PR to GitHub auto-merge, so a repo with no required checks still waits for its Vercel and CI checks. Before this (HQ S250, 2026-10-15) a green security PR waited days for a person: 5 sat in /fleet triage at once. A repo whose every merge needs a person opts out in its own renovate.json with vulnerabilityAlerts.automerge=false (bs-hub does). Majors stay human. The weekly all-non-major group follows the same rule since HQ S254 (packageRules below).",
     "automerge": true,
     "platformAutomerge": false,
     "automergeType": "pr",
@@ -48,6 +49,13 @@
       "description": "eslint stays on the 9.x line fleet-wide (decision deferred-eslint-10-blocked-upstream). eslint-config-next (16.3.5 at the time of writing) bundles eslint-plugin-react 7.37.5, whose peer range stops at ^9.7 and which crashes at rule execution under eslint 10 (context.getFilename was removed; gravixar-hq #851 CI 2026-09-10, bs-hub #516, robonamix #39). `next build` does not run eslint, so a green Vercel check does not cover this. Lift by deleting this rule once eslint-plugin-react declares a ^10 peer AND eslint-config-next bundles that release.",
       "matchPackageNames": ["eslint", "@eslint/js"],
       "allowedVersions": "<10.0.0"
+    },
+    {
+      "description": "The weekly all-non-major group (group:allNonMajor) merges itself once EVERY status check on the PR is green, like security PRs and the lockfile refresh. Decided by Qamar in HQ S254 (2026-10-17, task renovate-automerge-non-major-proposal): HQ's group PR sat red for 12 days and green ones waited days for a click that added no judgement; the checks are the gate either way. platformAutomerge is false at the TOP of this preset so Renovate checks the branch status itself on every auto-merge path: GitHub's native auto-merge would merge at once on a repo with no required checks (gravixar-hq allows auto-merge and requires none). Majors stay human. A repo where every merge needs a person opts out in its own renovate.json with a LAST packageRule { matchUpdateTypes: [minor, patch], automerge: false } (bs-hub does).",
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash"
     }
   ]
 }
