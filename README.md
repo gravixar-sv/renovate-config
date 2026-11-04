@@ -21,11 +21,13 @@ That's the whole per-repo config. Everything else is tuned here in [`default.jso
 
 ## Policy (as of this preset)
 
-- **Scheduled** — updates land weekly (early Monday), not as a running stream.
-- **Grouped** — all non-major updates batch into a single PR; majors stay separate for attention.
+- **Mondays only, Pakistan time** — Renovate opens, updates, rebases and auto-merges its branches only on Mondays (`timezone: Asia/Karachi`, cron `* * * * 1`), and `updateNotScheduled: false` stops it re-pushing open PRs the rest of the week (HQ S296; that churn was 42% of October's GitHub Actions bill). The window is the whole day because Renovate also skips auto-merge outside it, and the Mend app visits each repo only about every 4 hours. Security PRs ignore the window.
+- **3-day release age (npm)** — a version must be 3 days old before Renovate proposes it, so a burst of releases becomes one push. Security PRs and the lockfile refresh are not delayed.
+- **Majors on the Dependency Dashboard** — a major shows as a checkbox on the repo's Dependency Dashboard issue and gets a branch and PR only once someone ticks it. Security majors still open at once.
+- **Grouped** — all non-major updates batch into a single PR.
 - **Rate-limited** — max 5 concurrent / 2 per hour, so no repo ever floods.
 - **Low rebase churn** — branches only rebase when conflicted (`recreateWhen: never`), which stops the "same PR redeploys 5 times" noise on Vercel-connected repos.
-- **Lockfile maintenance** — weekly refresh to keep lockfiles healthy.
+- **Lockfile maintenance** — weekly refresh (Mondays) to keep lockfiles healthy.
 - **Auto-merge on green, majors excepted** — security PRs and the Monday lockfile refresh (HQ S250), and the weekly all-non-major group (HQ S254), merge themselves once every status check on the PR is green. Renovate checks the status itself (`platformAutomerge: false`), because GitHub's native auto-merge merges at once on a repo with no required checks. Majors always wait for a person. A repo where every merge needs a person opts out in its own `renovate.json` (bs-hub does).
 - **`@gravixar-sv/core` disabled** — it lives on a private registry Renovate can't read; its versioning is managed outside Renovate.
 - **Override blocks are off-limits** — `overrides` / `pnpm.overrides` / pnpm-workspace `overrides` / `resolutions` are security floors, driven by advisories (Cortex rollups, audit gates), never by version currency. Renovate can only raise the value under a fixed range key, which is a no-op at best and a forced major at worst, and on npm repos the in-range lockfile bump fails with `EOVERRIDE`.
