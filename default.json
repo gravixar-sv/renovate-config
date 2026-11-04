@@ -1,12 +1,14 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "Shared Renovate preset for the Gravixar fleet (gravixar-sv). One place to tune dependency automation for every repo. Public repo so BOTH public and private consumers can resolve it. Consume with: { \"extends\": [\"github>gravixar-sv/renovate-config\"] }.",
+  "description": "Shared Renovate preset for the Gravixar fleet (gravixar-sv). One place to tune dependency automation for every repo. Public repo so BOTH public and private consumers can resolve it. Consume with: { \"extends\": [\"github>gravixar-sv/renovate-config\"] }. SCHEDULE (HQ S296, 2026-11-04, task fleet-renovate-update-only-on-schedule): Renovate opens, updates, rebases and auto-merges its branches only on Mondays, Pakistan time (timezone Asia/Karachi, cron '* * * * 1'; the old schedule:weekly preset was 00:00-03:59 UTC). updateNotScheduled=false stops the re-pushes outside that window: under Renovate's default (true) an open PR was re-pushed all week whenever a newer version came out, and every push re-ran CI and a Vercel preview. Renovate was 42% of the fleet's October GitHub Actions spend ($11.79 of $28.18, Oct 1-25; robonamix all-minor-patch 51 runs, ace-of-maids 64). The window is the whole Monday, not a 4-hour slot, because with updateNotScheduled=false Renovate also skips AUTO-MERGE outside the window (lib/workers/repository/update/branch/index.ts returns 'update-not-scheduled' before any automerge check) and the Mend app runs each repo about every 4 hours: robonamix #212 (weekly group) opened 01:16Z and merged itself at 05:40Z on 2026-11-02, the next run, which a 4-hour window would have skipped, leaving a green PR for a week. Security PRs are untouched: Renovate forces vulnerabilityAlerts' own empty schedule onto them, so they still open, rebase and merge at any hour. Ticking a PR's rebase box or a Dependency Dashboard checkbox still acts at once.",
   "extends": [
     "config:recommended",
     ":semanticCommits",
-    "schedule:weekly",
     "group:allNonMajor"
   ],
+  "timezone": "Asia/Karachi",
+  "schedule": ["* * * * 1"],
+  "updateNotScheduled": false,
   "prConcurrentLimit": 5,
   "prHourlyLimit": 2,
   "rebaseWhen": "conflicted",
@@ -22,8 +24,8 @@
   },
   "lockFileMaintenance": {
     "enabled": true,
-    "schedule": ["before 6am on monday"],
-    "description": "The weekly lockfile refresh re-resolves every transitive dependency inside its declared range, which clears most transitive advisories (brace-expansion, source-map-js, fast-uri) without an override pin. It merges itself once every check is green, with the same rules and the same per-repo opt-out as vulnerabilityAlerts (HQ S250).",
+    "schedule": ["* * * * 1"],
+    "description": "The weekly lockfile refresh re-resolves every transitive dependency inside its declared range, which clears most transitive advisories (brace-expansion, source-map-js, fast-uri) without an override pin. It merges itself once every check is green, with the same rules and the same per-repo opt-out as vulnerabilityAlerts (HQ S250). Window (HQ S296, 2026-11-04, task fleet-renovate-update-only-on-schedule): the whole Monday, Pakistan time, like every other branch. It was 'before 6am on monday' (UTC) in Renovate's deprecated later.js text syntax; cron replaces it, and the window is wider so that, under updateNotScheduled=false, the PR can still merge itself on a later run the same day (robonamix #213 opened 05:41Z and merged itself 08:39Z on 2026-11-02, after a 6am cut-off). minimumReleaseAge does not apply here: the npm rule below matches major/minor/patch only, so this branch's stability check can never sit pending.",
     "automerge": true,
     "platformAutomerge": false,
     "automergeType": "pr",
@@ -49,6 +51,18 @@
       "description": "eslint stays on the 9.x line fleet-wide (decision deferred-eslint-10-blocked-upstream). eslint-config-next (16.3.5 at the time of writing) bundles eslint-plugin-react 7.37.5, whose peer range stops at ^9.7 and which crashes at rule execution under eslint 10 (context.getFilename was removed; gravixar-hq #851 CI 2026-09-10, bs-hub #516, robonamix #39). `next build` does not run eslint, so a green Vercel check does not cover this. Lift by deleting this rule once eslint-plugin-react declares a ^10 peer AND eslint-config-next bundles that release.",
       "matchPackageNames": ["eslint", "@eslint/js"],
       "allowedVersions": "<10.0.0"
+    },
+    {
+      "description": "npm releases must be 3 days old before Renovate proposes them (HQ S296, 2026-11-04, task fleet-renovate-update-only-on-schedule). Why: a burst of patch releases (next, @types/*, ai) lands as ONE push instead of one push per release, each of which re-ran CI and a Vercel preview; and npm lets an author unpublish within 72 hours, so a 3-day-old version is also safer to build on. Same values as Renovate's own security:minimumReleaseAgeNpm preset, written out here so the reason travels with the rule. internalChecksFilter=strict (Renovate's default since v42, set explicitly) means a too-young version is left OUT of the branch rather than pushed with a pending 'renovate/stability-days' check, so a branch only exists once every version in it has aged, the check is already green, and auto-merge is never left waiting on it; young versions show under 'Pending Status Checks' on the Dependency Dashboard, where a tick forces them. Security PRs are NOT delayed: Renovate forces vulnerabilityAlerts' own config (minimumReleaseAge null) onto them (docs key-concepts/minimum-release-age: 'Security updates bypass any minimumReleaseAge checks'). Lock file maintenance is NOT matched (it has no release timestamp, so it would sit pending forever under Renovate 42's timestamp-required default).",
+      "matchDatasources": ["npm"],
+      "matchUpdateTypes": ["major", "minor", "patch"],
+      "minimumReleaseAge": "3 days",
+      "internalChecksFilter": "strict"
+    },
+    {
+      "description": "Majors wait on the Dependency Dashboard: Renovate lists each one as a checkbox on the repo's 'Dependency Dashboard' issue and opens no branch, PR, CI run or Vercel preview until someone ticks it (HQ S296, 2026-11-04, task fleet-renovate-update-only-on-schedule). Why: majors never merge themselves, so an open major PR only waits, and every Renovate touch rebuilt it; 20 non-security major PRs sat open fleet-wide on 2026-11-04, several since September (ubuntu 26, gradle 9, stripe 23, ai 7, pnpm 10/12, @sentry/nextjs 11, node 26), and they also use up prConcurrentLimit (5) slots: robonamix's 4 open majors plus the weekly group made 5 on 2026-11-02, and its lockfile refresh opened only after the group merged. Security fixes that happen to be majors still open at once (vulnerabilityAlerts forces dependencyDashboardApproval=false). This gates only NEW branches: a major PR that is already open stays open and keeps updating on Mondays until it is merged or closed (lib/workers/repository/update/branch/index.ts checks approval only when the branch does not exist). Closing one moves it to the dashboard's closed/ignored list, where a tick brings it back.",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
     },
     {
       "description": "The weekly all-non-major group (group:allNonMajor) merges itself once EVERY status check on the PR is green, like security PRs and the lockfile refresh. Decided by Qamar in HQ S254 (2026-10-17, task renovate-automerge-non-major-proposal): HQ's group PR sat red for 12 days and green ones waited days for a click that added no judgement; the checks are the gate either way. platformAutomerge is false at the TOP of this preset so Renovate checks the branch status itself on every auto-merge path: GitHub's native auto-merge would merge at once on a repo with no required checks (gravixar-hq allows auto-merge and requires none). Majors stay human. A repo where every merge needs a person opts out in its own renovate.json with a LAST packageRule { matchUpdateTypes: [minor, patch], automerge: false } (bs-hub does). recreateWhen=always (HQ S276, 2026-10-28): the group PR has the SAME branch and title every week, so under the top-level recreateWhen=never Renovate found last week's automerged PR, took this one for a repeat and switched automerge OFF (PR body: 'Automerge: Disabled because a matching PR was automerged previously'; renovate lib/workers/repository/update/branch/index.ts + check-existing.ts). That is why green group PRs from 2026-09-28 still waited for a click in HQ, Robonamix, BloodLink and Broomstick. Majors keep never, so a major you close stays closed.",
